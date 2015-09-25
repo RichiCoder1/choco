@@ -54,6 +54,33 @@ namespace chocolatey.infrastructure.app.nuget
                         .Where(p => configuration.Prerelease || p.IsReleaseVersion())
                         .distinct_last(PackageEqualityComparer.Id, PackageComparer.Version);
         }
+
+        public static int GetCount(ChocolateyConfiguration configuration, ILogger nugetLogger)
+        {
+            var packageRepository = NugetCommon.GetRemoteRepository(configuration, nugetLogger);
+            IQueryable<IPackage> results = packageRepository.Search(configuration.Input, configuration.Prerelease);
+
+            if (configuration.AllVersions)
+            {
+                return results.Where(PackageExtensions.IsListed).Count();
+            }
+
+            if (configuration.Prerelease && packageRepository.SupportsPrereleasePackages)
+            {
+                results = results.Where(p => p.IsAbsoluteLatestVersion);
+            }
+            else
+            {
+                results = results.Where(p => p.IsLatestVersion);
+            }
+
+            return results
+                        .AsEnumerable()
+                        .Where(PackageExtensions.IsListed)
+                        .Where(p => configuration.Prerelease || p.IsReleaseVersion())
+                        .distinct_last(PackageEqualityComparer.Id, PackageComparer.Version)
+                        .Count();
+        }
     }
 
     // ReSharper restore InconsistentNaming
